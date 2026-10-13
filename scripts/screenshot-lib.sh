@@ -10,6 +10,14 @@ mkdir -p "$OUT" "$WORK"
 # on a playback error, "PIP_MODE true|false" on every PiP change and "PIP_BOUNDS l t r b" once the PiP window settled.
 SCENE_TAG="${SCENE_TAG:-PipSample}"
 
+# Full Wi-Fi and no mobile signal in the demo status bar. Sent as separate commands, and again after a rotation,
+# because the tablet's System UI rebuilds its status bar and dropped the Wi-Fi icon otherwise.
+demo_network() {
+  adb shell am broadcast -a com.android.systemui.demo -e command network -e mobile hide > /dev/null
+  adb shell am broadcast -a com.android.systemui.demo -e command network -e fully true > /dev/null
+  adb shell am broadcast -a com.android.systemui.demo -e command network -e wifi show -e level 4 > /dev/null
+}
+
 install_sample() {
   adb install -r sample/build/outputs/apk/debug/sample-debug.apk
   # A freshly booted emulator often shows "Pixel Launcher isn't responding".
@@ -23,12 +31,30 @@ install_sample() {
   adb shell am broadcast -a com.android.systemui.demo -e command enter
   adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 0941
   adb shell am broadcast -a com.android.systemui.demo -e command battery -e level 100 -e plugged false
-  adb shell am broadcast -a com.android.systemui.demo -e command network -e wifi show -e level 4 -e mobile show -e level 4
+  demo_network
   adb shell am broadcast -a com.android.systemui.demo -e command notifications -e visible false
+}
+
+# The emulator runner unlocks the screen with a key press, which leaves the device out of touch mode, so
+# Compose would draw keyboard focus highlights. A tap on the empty home screen puts it back in touch mode.
+# Android TV has no touch screen and shows focus by design, so it is left alone.
+enter_touch_mode() {
+  local size w h
+  if adb shell pm has-feature android.software.leanback | grep -q true; then
+    return 0
+  fi
+  adb shell input keyevent KEYCODE_HOME
+  sleep 1
+  size="$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1 | tr -d '\r')"
+  w="${size%x*}"
+  h="${size#*x}"
+  adb shell input tap "$((w / 2))" "$((h * 2 / 5))"
+  sleep 1
 }
 
 fresh_launch() {
   adb shell pm clear "$PKG" > /dev/null
+  enter_touch_mode
   adb logcat -c || true
   adb shell am start -W -n "$PKG/.MainActivity" "$@" > /dev/null
 }
@@ -137,8 +163,10 @@ capture() {
   local name="$1" expected="$2"
   local file="${OUT:?}/${name:?}.png"
   dismiss_system_dialogs
-  expect_on_screen "$expected"
+  # Capture right away and check the screen afterwards: the UI dump takes seconds, and waiting for it let the
+  # 10 second clip roll over to the next one, whose first frames were not drawn yet (a black video area).
   adb exec-out screencap -p > "$file"
+  expect_on_screen "$expected"
   if ! check_png "$file"; then
     rm -f "$file"
     exit 1
@@ -215,6 +243,8 @@ ensure_landscape() {
     h="${size#*x}"
     if [ "$w" -gt "$h" ]; then
       echo "Display is landscape ($size, rotation $rotation)"
+      demo_network
+      sleep 1
       return 0
     fi
   done

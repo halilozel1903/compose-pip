@@ -40,9 +40,9 @@ The custom actions (previous, pause, next) only show when the PiP window is tapp
 
 <img src="docs/screenshots/tablet-player.png" alt="The sample on a tablet in landscape: the video with title and controls on the left, the playlist and the Picture-in-picture panel on the right" width="800">
 
-**Android TV** (1080p): the video full screen with D-pad buttons, including one that enters PiP.
+**Android TV** (1080p): the video full screen with D-pad buttons. The Android TV emulator image used in CI does not support picture-in-picture, so the badge says so and the PiP button is hidden; on TV devices that support PiP, a Picture-in-picture button appears after Next.
 
-<img src="docs/screenshots/tv-player.png" alt="The sample on Android TV: the video full screen with the clip title, a progress bar, Previous, Pause, Next and Picture-in-picture buttons and a badge showing the PiP window's aspect ratio and actions" width="800">
+<img src="docs/screenshots/tv-player.png" alt="The sample on Android TV: the video full screen with the clip title, a progress bar, Previous, Pause and Next buttons, and a badge saying picture-in-picture is not supported on this device" width="800">
 
 ## Features
 
