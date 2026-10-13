@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 320 x 180 dp Android TV launcher banner: a screen with a floating picture-in-picture window. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path android:pathData="M0,0h320v180h-320z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:endX="320"
+                android:endY="180"
+                android:startX="0"
+                android:startY="0"
+                android:type="linear">
+                <item android:color="#FF10162A" android:offset="0" />
+                <item android:color="#FF2A1E4A" android:offset="1" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Big screen outline -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M28,30h196a8,8 0,0 1,8 8v104a8,8 0,0 1,-8 8h-196a8,8 0,0 1,-8 -8v-104a8,8 0,0 1,8 -8z"
+        android:strokeColor="#667CE0C3"
+        android:strokeWidth="3" />
+    <!-- Floating PiP window with a play glyph -->
+    <path
+        android:fillColor="#FF7CE0C3"
+        android:pathData="M182,92h108a8,8 0,0 1,8 8v52a8,8 0,0 1,-8 8h-108a8,8 0,0 1,-8 -8v-52a8,8 0,0 1,8 -8z" />
+    <path
+        android:fillColor="#FF10162A"
+        android:pathData="M228,112l20,14l-20,14z" />
+    <!-- Title bars -->
+    <path
+        android:fillColor="#CCFFFFFF"
+        android:pathData="M40,52h110a5,5 0,0 1,0 10h-110a5,5 0,0 1,0 -10z" />
+    <path
+        android:fillColor="#66FFFFFF"
+        android:pathData="M40,72h72a4,4 0,0 1,0 8h-72a4,4 0,0 1,0 -8z" />
+</vector>
