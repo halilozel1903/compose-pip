@@ -11,6 +11,8 @@ import sys
 
 from PIL import Image, ImageChops, ImageStat
 
+from video_check import looks_like_video, video_content
+
 
 def fail(message):
     sys.exit(f"PiP check failed: {message}")
@@ -34,15 +36,9 @@ def main():
         fail(f"the window covers {share:.1%} of the screen; that is not a PiP window")
     print(f"PiP window {w}x{h} at {left},{top}: {share:.1%} of the screen")
 
-    # Inside: decoded video, many colors and not black. Inset to skip rounded corners and the shadow.
-    inset = max(4, min(w, h) // 20)
-    window = shot.crop((max(0, left + inset), max(0, top + inset), min(width, right - inset), min(height, bottom - inset)))
-    small = window.resize((160, max(1, round(160 * window.height / window.width))))
-    raw = small.tobytes()
-    pixels = [raw[i:i + 3] for i in range(0, len(raw), 3)]
-    colors = len(set(pixels))
-    lit = sum(1 for p in pixels if max(p) > 40) / len(pixels)
-    if colors < 150 or lit < 0.08:
+    # Inside: decoded video, many colors and not black.
+    colors, lit = video_content(shot, left, top, right, bottom)
+    if not looks_like_video(colors, lit):
         fail(f"the window does not look like video ({colors} colors, {lit:.0%} lit pixels)")
     print(f"Window content: {colors} colors, {lit:.0%} lit pixels")
 

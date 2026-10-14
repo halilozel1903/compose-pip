@@ -243,7 +243,7 @@ adb shell input keyevent KEYCODE_HOME                        # auto-enter: the v
 adb shell am start -n io.github.halilozel1903.pip.sample/.MainActivity --ez enter_pip true   # enter PiP from the app
 ```
 
-`--es scene player` makes the sample log `SCENE_READY player` once video frames are on screen and playback has run a few seconds; it always logs `PIP_MODE` changes and, in PiP, the window's `PIP_BOUNDS`. `scripts/screenshots.sh` (phone, tablet, tv) uses these to capture only real playback and a verified PiP window. To regenerate the clips: `pip install numpy pillow imageio-ffmpeg && python3 scripts/generate-demo-clips.py`.
+`--es scene player` makes the sample log `SCENE_READY player video <left> <top> <right> <bottom>` once video frames are on screen and playback has run a few seconds, with where the picture sits so the script can check those pixels are video ([`scripts/video_check.py`](scripts/video_check.py)); it always logs `PIP_MODE` changes and, in PiP, the window's `PIP_BOUNDS`. `scripts/screenshots.sh` (phone, tablet, tv) uses these to capture only real playback and a verified PiP window. To regenerate the clips: `pip install numpy pillow imageio-ffmpeg && python3 scripts/generate-demo-clips.py`.
 
 ## Project structure
 

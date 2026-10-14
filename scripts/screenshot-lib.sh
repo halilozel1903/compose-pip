@@ -6,7 +6,8 @@ OUT="docs/screenshots"
 WORK="${RUNNER_TEMP:-/tmp}/pip-screenshots"
 mkdir -p "$OUT" "$WORK"
 
-# The sample logs under this tag: "SCENE_READY player" once decoded video is on screen, "SCENE_FAILED player: ..."
+# The sample logs under this tag: "SCENE_READY player video l t r b" once decoded video is on screen (with where
+# the picture sits), "SCENE_FAILED player: ..."
 # on a playback error, "PIP_MODE true|false" on every PiP change and "PIP_BOUNDS l t r b" once the PiP window settled.
 SCENE_TAG="${SCENE_TAG:-PipSample}"
 
@@ -78,15 +79,19 @@ wait_for_log() {
   return 1
 }
 
+# Where the video picture sits on screen ("left top right bottom"), from the SCENE_READY line; empty when unknown.
+VIDEO_BOUNDS=""
+
 # Waits until the player scene shows decoded video and has played for a few seconds.
 wait_for_scene() {
-  local scene="$1"
-  if ! wait_for_log "SCENE_READY $scene" 150 > /dev/null; then
+  local scene="$1" line
+  if ! line="$(wait_for_log "SCENE_READY $scene" 150)"; then
     echo "The $scene scene did not finish loading within 150 s." >&2
     adb logcat -d -t 200 >&2 || true
     exit 1
   fi
-  echo "Scene $scene is ready"
+  VIDEO_BOUNDS="$(printf '%s' "$line" | grep -oE 'video -?[0-9]+ -?[0-9]+ -?[0-9]+ -?[0-9]+' | cut -d' ' -f2- || true)"
+  echo "Scene $scene is ready (video at ${VIDEO_BOUNDS:-unknown bounds})"
   sleep 1
 }
 
@@ -159,13 +164,33 @@ print(f"{path}: {width}x{height}, {len(data) // 1024} KB, {distinct} distinct sa
 PY
 }
 
+# How often a capture is retried when the video area is not showing video yet, and the pause between tries.
+# On the emulator a clip's first frames after the playlist moves on to the next clip can take seconds to show
+# (the area is black meanwhile), so a black frame is captured again; every kept shot still passes every check.
+CAPTURE_TRIES=15
+CAPTURE_PAUSE=2
+
 capture() {
-  local name="$1" expected="$2"
+  local name="$1" expected="$2" try
   local file="${OUT:?}/${name:?}.png"
   dismiss_system_dialogs
-  # Capture right away and check the screen afterwards: the UI dump takes seconds, and waiting for it let the
-  # 10 second clip roll over to the next one, whose first frames were not drawn yet (a black video area).
-  adb exec-out screencap -p > "$file"
+  # Capture right away and check the screen afterwards: the UI dump takes seconds.
+  for try in $(seq 1 "$CAPTURE_TRIES"); do
+    adb exec-out screencap -p > "$file"
+    # shellcheck disable=SC2086
+    if [ -z "$VIDEO_BOUNDS" ] || python3 scripts/video_check.py "$file" $VIDEO_BOUNDS; then
+      break
+    fi
+    if [ "$try" -eq "$CAPTURE_TRIES" ]; then
+      echo "The video area of $name never showed video; no screenshot." >&2
+      rm -f "$file"
+      exit 1
+    fi
+    sleep "$CAPTURE_PAUSE"
+  done
+  if [ -z "$VIDEO_BOUNDS" ]; then
+    echo "Warning: the sample did not report where the video is; only the whole image is checked." >&2
+  fi
   expect_on_screen "$expected"
   if ! check_png "$file"; then
     rm -f "$file"
@@ -216,13 +241,23 @@ capture_pip() {
     echo "Warning: dumpsys did not show a pinned task for $PKG (format differs on this image); relying on the app's PiP callback." >&2
   fi
   sleep 2
-  dismiss_system_dialogs
-  adb exec-out screencap -p > "$file"
-  # shellcheck disable=SC2086
-  if ! python3 scripts/verify-pip.py "$file" $bounds "$fullscreen" "$WORK/home.png"; then
-    rm -f "$file"
-    exit 1
-  fi
+  local try
+  for try in $(seq 1 "$CAPTURE_TRIES"); do
+    dismiss_system_dialogs
+    adb exec-out screencap -p > "$file"
+    # shellcheck disable=SC2086
+    if python3 scripts/verify-pip.py "$file" $bounds "$fullscreen" "$WORK/home.png"; then
+      break
+    fi
+    if [ "$try" -eq "$CAPTURE_TRIES" ]; then
+      rm -f "$file"
+      exit 1
+    fi
+    if ! adb shell dumpsys activity activities | grep -E "mode=pinned" | grep -q "$PKG"; then
+      echo "Warning: the task may have left PiP; capturing again anyway." >&2
+    fi
+    sleep "$CAPTURE_PAUSE"
+  done
   echo "Captured $name"
 }
 

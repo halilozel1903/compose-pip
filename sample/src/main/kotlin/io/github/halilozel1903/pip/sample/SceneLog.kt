@@ -19,11 +19,15 @@ import kotlinx.coroutines.delay
 const val SCENE_TAG = "PipSample"
 
 /**
- * Logs `SCENE_READY player` once the player has rendered video frames and played for a few seconds, so the
- * screenshot shows real decoded video, or `SCENE_FAILED player: <reason>` on a playback error or timeout.
+ * Logs `SCENE_READY player video left top right bottom` once the player has rendered video frames and played for
+ * a few seconds, so the screenshot shows real decoded video, or `SCENE_FAILED player: <reason>` on a playback error
+ * or timeout. The bounds are where the video picture sits on screen (the PiP source rect hint, moved by the
+ * window's position); the screenshot script checks that the pixels there are video. They are left out when the
+ * picture has no bounds yet.
  */
 @Composable
-fun ReportPlaybackScene(player: Player) {
+fun ReportPlaybackScene(player: Player, pip: PipState) {
+    val view = LocalView.current
     var firstFrame by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     DisposableEffect(player) {
@@ -49,7 +53,12 @@ fun ReportPlaybackScene(player: Player) {
             if (firstFrame && player.isPlaying && player.currentPosition >= 2_500) {
                 delay(800)
                 withFrameNanos { }
-                Log.i(SCENE_TAG, "SCENE_READY player")
+                val video = pip.sourceRectHint?.takeUnless { it.isEmpty }?.let {
+                    val window = IntArray(2)
+                    view.rootView.getLocationOnScreen(window)
+                    " video ${window[0] + it.left} ${window[1] + it.top} ${window[0] + it.right} ${window[1] + it.bottom}"
+                }
+                Log.i(SCENE_TAG, "SCENE_READY player${video.orEmpty()}")
                 return@LaunchedEffect
             }
             if (System.currentTimeMillis() - start > 90_000) {

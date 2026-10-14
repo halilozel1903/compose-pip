@@ -75,7 +75,7 @@ fun PlayerScreen(player: Player, pipRequests: ReceiveChannel<Unit>, reportScene:
         }
     }
     ReportPipMode(pip)
-    if (reportScene) ReportPlaybackScene(player)
+    if (reportScene) ReportPlaybackScene(player, pip)
 
     val isTv = (LocalConfiguration.current.uiMode and Configuration.UI_MODE_TYPE_MASK) ==
         Configuration.UI_MODE_TYPE_TELEVISION
